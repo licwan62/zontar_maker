@@ -65,11 +65,17 @@ ZIP 内的目录结构与历史交付包一致：`<包名>/01_主图/...`、`<�
 
 ## 快速开始
 
+免安装入口 `python run.py <命令>` 等同于 `zontar <命令>`（安装方式：`pip install -e .`，需要 OSS 时 `pip install -e .[oss]`）。
+
 ```bash
-pip install -e .            # 需要 OSS 时：pip install -e .[oss]
-zontar doctor               # 检查 Logo、模板、字体、源图、远端配置是否齐全
-zontar paths --vehicle toyota_rav4
+python run.py status                      # 每个车型的进度、缺失输入、下一步
+python run.py run volkswagen_tiguan       # 按序号跑全部步骤，再打包、刷新清单
+python run.py run volkswagen_tiguan --from 10
+python run.py doctor                      # 检查 Logo、模板、字体、源图、远端配置
+python run.py styles                      # 查看可选的车型套图主题
 ```
+
+AI 代理（Codex、Claude Code）接手时先读 [AGENTS.md](AGENTS.md) 和 [docs/HANDOFF.md](docs/HANDOFF.md)。
 
 ## 常用命令
 
@@ -101,6 +107,7 @@ git clone ... && pip install -e . && zontar sync pull
 2. 在 `data/vehicles/<slug>/inputs/` 放 `size_map.csv`（运营给的尺码表）和 `skus.csv`（每个 SKU 的发货尺码、标题行、年份、适配卡片）。
 3. `00_extract_fitment.py`：从俄罗斯销量表抽出该车型逐代车长，与尺码表交叉校验，不一致即报错。
 4. `10_build_images.py`：调用 `src/zontar/render.py` 生成主图、适配图、SKU 选择图和总览，并复制分类共用副图与 A+。缺源图或 Logo 时用占位图并加 DRAFT 水印。
+   在 `render.Job(style="...")` 中选择 `land_cruiser`、`renault_logan` 或 `toyota_rav4_v6`；主题说明见 [docs/IMAGE_STYLES.md](docs/IMAGE_STYLES.md)。
 5. `20_build_listing.py`：生成上架内容 CSV、官方模板行 CSV（`official_listing/模板.csv`）、尺码说明和源图生图提示词（`inputs/source_prompts.csv`）。
 6. （规划中）车型适配图要用真实车辆照片时，先写 `inputs/image_requests.csv`，再调用 `vehicle-image-scout` agent 联网找图，人工审批后抠图。约定见 [docs/agents/vehicle-image-scout.md](docs/agents/vehicle-image-scout.md)。
 7. 按提示词生成 `base_<SKU>.png` 放进 `assets/inputs/vehicles/<slug>/source/`，重跑第 4 步，水印自动消失。
@@ -129,5 +136,5 @@ git clone ... && pip install -e . && zontar sync pull
 
 - **官方模板与汇总表的最新版本不在本目录**：`30_build_listing.mjs` 需要 `assets/inputs/spreadsheets/汽车罩官方上架模板.xlsx` 和 `Ozon上架链接汇总_两店对应完成.xlsx`（原位于作者桌面 / `ozon发货`）。放入后执行 `zontar tables convert` 把汇总表转成 `data/listing_summary/current/`。
 - **`@oai/artifact-tool`** 是原作者环境里的 Node 包，本机未安装，`.mjs` 脚本需在有该包的环境运行，或日后改写为 openpyxl 实现。
-- **RAV4 图片不能完全复现**：`10_build_images_v6.py` 输出 YS 命名到 `outputs/vehicles/toyota_rav4/staging/V6/`，交付包中的 XS 版本是之后手工改名/改字得到的。
+- **RAV4 XS 图片只能视觉复现**：`10_build_images_v6.py` 输出到 `outputs/vehicles/toyota_rav4/staging/V6/`，M、S 与交付包逐像素一致，XS 视觉一致但非逐像素（交付的 XS 文件经过一次重新编码）。
 - **Renault Logan 使用的是越野车共用副图和 A+**（见 `data/vehicles.csv` 备注），与三厢车类别不一致，需确认是否有意为之。

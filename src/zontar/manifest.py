@@ -81,11 +81,18 @@ def local_files(area: str):
 def scan(area: str, previous: dict[str, Entry] | None = None) -> dict[str, Entry]:
     """Hash the local asset tree for ``area``; image dimensions are reused when the hash is unchanged."""
     previous = previous or {}
+    mp = manifest_path(area)
+    cutoff = mp.stat().st_mtime if mp.exists() else 0.0
     out: dict[str, Entry] = {}
     for p in local_files(area):
         key = layout.key_of(p)
-        digest = sha256_file(p)
         prev = previous.get(key)
+        st = p.stat()
+        # Fast path: same size and not modified since the manifest was written -> trust the recorded hash.
+        if prev and prev.bytes == st.st_size and st.st_mtime < cutoff:
+            out[key] = prev
+            continue
+        digest = sha256_file(p)
         if prev and prev.sha256 == digest:
             out[key] = prev
             continue

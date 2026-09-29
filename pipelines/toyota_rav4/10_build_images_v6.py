@@ -4,7 +4,8 @@ import zipfile
 
 import sys; from pathlib import Path as _P; sys.path.insert(0, str(_P(__file__).resolve().parents[2] / "src"))
 from zontar import layout, pack
-# Renders V6 with the historical YS naming into a staging folder; the delivered package renamed YS -> XS by hand.
+# Renders V6 into a staging folder. Source files keep the historical YS name; the SKU is labelled XS (as delivered).
+# Verified 2026-09-29: M/S are pixel-identical to the package; XS is visually identical (the delivered XS files were re-encoded once).
 v=layout.vehicle('toyota_rav4'); src=v.source; out=layout.asset('outputs/vehicles/toyota_rav4/staging/V6'); out.mkdir(parents=True,exist_ok=True)
 W,H=1086,1448; navy=(4,24,44); orange=(244,91,22); white=(255,255,255)
 regular=r'C:\Windows\Fonts\tahoma.ttf'; bold=r'C:\Windows\Fonts\ariblk.ttf'; condensed=r'C:\Windows\Fonts\tahomabd.ttf'
@@ -45,7 +46,9 @@ data={
 'S':{'body':'5-ДВЕРНЫЙ SUV','years':'1994–2016','fit':['2012–2015  ·  5 дверей','2010–2016  ·  5 дверей','2005–2010  ·  5 дверей','2003–2006  ·  5 дверей','2000–2003  ·  5 дверей','1994–2000  ·  5 дверей']},
 'YS':{'body':'3 ДВЕРИ · КОРОТКАЯ БАЗА','years':'1994–2006','fit':['2003–2006  ·  3 двери','2000–2003  ·  3 двери','1994–2000  ·  3 двери','1994–2000  ·  короткая база']}}
 
+LABEL={'YS':'XS'}  # source-file code -> SKU shown on images and in file names
 for code,v in data.items():
+    lab=LABEL.get(code,code)
     photo=Image.open(src/f'base_{code}.png').convert('RGB')
     im=photo.resize((W,H),Image.Resampling.LANCZOS).convert('RGBA');gradient(im,0,510,navy,220,True);gradient(im,1050,H,navy,245)
     d=ImageDraw.Draw(im)
@@ -55,7 +58,7 @@ for code,v in data.items():
     d.rounded_rectangle((50,192,374,266),radius=12,fill=(*orange,242))
     text(d,(73,204),v['years'],42,white,True,c=True)
     d.rounded_rectangle((50,290,315,370),radius=12,fill=(*navy,240))
-    text(d,(73,301),'SIZE: '+code,44,white,True,c=True)
+    text(d,(73,301),'SIZE: '+lab,44,white,True,c=True)
     d.rectangle((0,1222,W,H),fill=(*navy,248))
     labels=[('ЗАЩИТА','ОТ ДОЖДЯ'),('ЗАЩИТА','ОТ СНЕГА'),('ЗАЩИТА','ОТ СОЛНЦА'),('ДЛЯ ПАРКОВКИ','В ЛЮБОЙ СЕЗОН')]
     for i,(a,b) in enumerate(labels):
@@ -66,7 +69,7 @@ for code,v in data.items():
         if i<3:d.line((x+270,1240,x+270,1326),fill=(113,144,168),width=2)
     center(d,1350,'Материалы принадлежат бренду Tozaroa.',18,(215,228,237))
     center(d,1378,'За товары сторонних продавцов бренд ответственности не несёт.',17,(215,228,237))
-    im.convert('RGB').save(out/f'RAV4_{code}_主图_V6_1086x1448.png')
+    im.convert('RGB').save(out/f'RAV4_{lab}_主图_V6_1086x1448.png')
 
     car=Image.open(src/f'vehicle_{code}.png').convert('RGB')
     im=cover(car.crop((0,250,1086,1350)),W,H,.54).convert('RGBA')
@@ -78,7 +81,7 @@ for code,v in data.items():
     d.line((48,790,1038,790),fill=(255,255,255,180),width=2)
     text(d,(49,805),'ПОДХОДИТ ДЛЯ',49,white,True,c=True)
     d.rounded_rectangle((804,803,1038,872),radius=11,fill=(*orange,245))
-    text(d,(830,815),'SIZE '+code,42,white,True,c=True)
+    text(d,(830,815),'SIZE '+lab,42,white,True,c=True)
     y=895; available=430; gap=4; row_h=(available-gap*(len(v['fit'])-1))//len(v['fit'])
     for j,s in enumerate(v['fit']):
         yy=y+j*(row_h+gap)
@@ -86,7 +89,7 @@ for code,v in data.items():
         d.rectangle((46,yy,54,yy+row_h),fill=orange)
         text(d,(81,yy+(row_h-41)//2),s,38,white,True,c=True)
     center(d,1362,'СВЕРЬТЕ КУЗОВ И ГОД ПЕРЕД ЗАКАЗОМ',30,white,True,c=True)
-    im.convert('RGB').save(out/f'RAV4_{code}_车型适配图_V6_1086x1448.png')
+    im.convert('RGB').save(out/f'RAV4_{lab}_车型适配图_V6_1086x1448.png')
 
 # One visual language for the shared selector: every row is a full-bleed vehicle panel.
 canvas=Image.new('RGBA',(W,H),(*navy,255));d=ImageDraw.Draw(canvas)
@@ -111,9 +114,9 @@ for i,code in enumerate(['M','S','YS']):
     for row in v['fit']:
         text(d,(47,yy),row,23,white,False,c=True);yy+=32
     d.rounded_rectangle((853,y+288,1030,y+370),radius=13,fill=(*orange,240))
-    text(d,(881,y+301),code,56,white,True,c=True)
+    text(d,(881,y+301),LABEL.get(code,code),56,white,True,c=True)
     if i<2:d.line((0,y+401,W,y+401),fill=(255,255,255,140),width=2)
 d=ImageDraw.Draw(canvas);center(d,1400,'СВЕРЬТЕ МОДЕЛЬ, КУЗОВ И ГОД',26,white,True,c=True)
-canvas.convert('RGB').save(out/'RAV4_M_S_YS_SKU共用选择图_V6_1086x1448.png')
+canvas.convert('RGB').save(out/'RAV4_M_S_XS_SKU共用选择图_V6_1086x1448.png')
 
 print(out)

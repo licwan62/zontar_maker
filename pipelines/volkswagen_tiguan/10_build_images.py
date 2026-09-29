@@ -16,10 +16,12 @@ v = layout.vehicle("volkswagen_tiguan").ensure_dirs()
 reg = layout.vehicle_registry()[v.slug]
 
 skus = [render.Sku(code=r["sku"], ship_size=r["ship_size"], body=r["body"], years=r["years"], base_image=r["base_image"],
+                   vehicle_image=r.get("vehicle_image") or None,
                    cards=[tuple(c.split("=", 1)) for c in r["cards"].split("|")])
         for r in tables.read_csv(v.data_dir / "inputs" / "skus.csv")]
 job = render.Job(brand=reg["listing_brand"], title="VOLKSWAGEN TIGUAN", file_prefix="VW_Tiguan",
-                 subtitle=("ВСЕСЕЗОННЫЙ ЧЕХОЛ", "ДЛЯ КРОССОВЕРА"), skus=skus)
+                 subtitle=("ВСЕСЕЗОННЫЙ ЧЕХОЛ", "ДЛЯ КРОССОВЕРА"), skus=skus,
+                 style="renault_logan")
 result = render.render_vehicle(job, v)
 
 for src, dst in [(layout.category_library(v.gallery_source), v.gallery),

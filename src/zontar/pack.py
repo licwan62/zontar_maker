@@ -35,8 +35,13 @@ def build(slug: str) -> Path:
     v = layout.vehicle(slug)
     v.dist.mkdir(parents=True, exist_ok=True)
     tmp = v.zip_path.with_suffix(".zip.part")
+    # Deterministic: fixed timestamps and permissions, sorted entries -> same content gives the same zip bytes,
+    # so re-running a pipeline does not show up as a manifest change.
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
         for src, arc in files_for(v):
-            z.write(src, arc)
+            info = zipfile.ZipInfo(arc, date_time=(2020, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            z.writestr(info, src.read_bytes())
     tmp.replace(v.zip_path)
     return v.zip_path

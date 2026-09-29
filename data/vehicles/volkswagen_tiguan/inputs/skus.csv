@@ -1,3 +1,3 @@
-﻿sku,ship_size,body,years,base_image,cards
-S,YM,TIGUAN I · II · III · R,2007–2026,base_S.png,TIGUAN I=2007–2018|TIGUAN II=2016–2025|TIGUAN III (ЕВРОПА)=2023–2026|TIGUAN R=2020–2024
-M,YL,ALLSPACE · L · L PRO · X,2016–2026,base_M.png,TIGUAN ALLSPACE / L=2016–2026|TIGUAN L PRO / X=2020–2026|TIGUAN III (ВЕРСИЯ США)=2025–2026
+﻿sku,ship_size,body,years,base_image,vehicle_image,cards
+S,YM,TIGUAN I · II · III · R,2007–2026,base_S.png,vehicle_S_cutout.png,TIGUAN I=2007–2018|TIGUAN II=2016–2025|TIGUAN III (ЕВРОПА)=2023–2026|TIGUAN R=2020–2024
+M,YL,ALLSPACE · L · L PRO · X,2016–2026,base_M.png,vehicle_M_cutout.png,TIGUAN ALLSPACE / L=2016–2026|TIGUAN L PRO / X=2020–2026|TIGUAN III (ВЕРСИЯ США)=2025–2026

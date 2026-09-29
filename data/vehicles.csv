@@ -1,5 +1,5 @@
 ﻿slug,brand,model,package_name,listing_brand,body_type,skus,gallery_folder,gallery_source,aplus_source,status,notes
 renault_logan,Renault,Logan,Renault_Logan_Tozaroa_最终上架包,Tozaroa,三厢车/旅行车,3M;2M,06_共用副图,阶段09_越野车副图,阶段10_越野车A+,delivered,"Shared gallery and A+ are the SUV (越野车) set, not the sedan (三厢车) set."
 toyota_land_cruiser,Toyota,Land Cruiser,Toyota_Land_Cruiser_Tozaroa_最终上架包,Tozaroa,越野车,S;M;L;XL,06_共用越野车副图,阶段09_越野车副图,阶段10_越野车A+,delivered,
-toyota_rav4,Toyota,RAV4,Toyota_RAV4_Tozaroa_最终上架包,Tozaroa,越野车,M;S;XS,06_共用越野车副图,阶段09_越野车副图,阶段10_越野车A+,delivered,Final images are V6 with YS renamed to XS; the V6 script still emits YS names.
+toyota_rav4,Toyota,RAV4,Toyota_RAV4_Tozaroa_最终上架包,Tozaroa,越野车,M;S;XS,06_共用越野车副图,阶段09_越野车副图,阶段10_越野车A+,delivered,V6 script renders XS into outputs/.../staging/V6; M/S pixel-identical to the package, XS visually identical (delivered XS was re-encoded).
 volkswagen_tiguan,Volkswagen,Tiguan,Volkswagen_Tiguan_Tozaroa_最终上架包,Tozaroa,越野车,S;M,06_共用越野车副图,阶段09_越野车副图,阶段10_越野车A+,draft,"Trial run 2026-09-29: source photos and logo pending, images carry DRAFT watermark."

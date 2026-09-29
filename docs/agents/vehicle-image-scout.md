@@ -1,10 +1,35 @@
-# 车型图片检索 agent：约定（规划中）
+# 车型图片检索：流程与约定（任何代理通用）
 
 目标：让车型适配图（`02_车型适配图`）使用**真实、代际正确**的车辆图片，样式同
 `renault_logan/package/02_车型适配图/Renault_Logan_3M_车型适配图_1086x1448.png`：
 模糊场景底图 + 透明背景的整车抠图（前 3/4 视角）+ 信息栏。
 
-Agent 定义：`.claude/agents/vehicle-image-scout.md`（Claude Code 项目子 agent）。
+本文件是唯一的流程说明。Codex 直接按本文执行（需联网搜索，例如 `codex --search`）；
+Claude Code 可用项目子代理 `.claude/agents/vehicle-image-scout.md`，它也只是指向本文。
+
+## 执行流程
+
+输入参数：车型 `slug`，可选 `sku`。路径用 `python run.py paths --vehicle <slug> --json` 解析（其中 `vehicle.candidates` 目录由 `zontar.layout.Vehicle.candidates` 给出）。
+
+1. **读请求**：`data/vehicles/<slug>/inputs/image_requests.csv` 的目标行和 `fitment_detail.csv`。先写下该代际的外观识别点（格栅、大灯、C 柱、尾部、车长级别），作为核验依据。查看参考样式图，理解需要的构图。
+2. **检索**：网络搜索，俄文、英文关键词都试（如 `Volkswagen Tiguan II 2018 press photo`、`Фольксваген Тигуан 2 фото`）。按下文“来源优先级”。每行请求收集 6–12 个候选。
+3. **下载**：`curl -L --max-filesize 20000000 -o <文件>` 下载原图到 `<candidates>/<sku>/<nn>_<来源简称>.<ext>`。网页阅读工具只用来读页面和授权条款。不绕过登录、付费墙、防盗链或 robots 限制。
+4. **逐张目视核验**（必须真正打开图片查看）：
+   - 代际/改款正确（对照第 1 步识别点，写明依据）；
+   - 车身形式正确（标准轴距与加长版、轿车与旅行车）；
+   - 视角为前 3/4（或请求指定的视角），整车完整不裁切，轮子落地；
+   - 长边 ≥ 1500 px，清晰；
+   - 无水印、无文字叠加、无遮挡；背景越干净越利于抠图；
+   - 车漆中性（银、白、灰优先），无改装、贴膜、特殊涂装。
+   不合格的也记录（`status=rejected` 并写原因），其文件可删除。
+5. **记录**：追加到 `data/vehicles/<slug>/inputs/image_candidates.csv`，列定义见下文；计算 sha256、宽高。
+6. **审查拼图**：
+   ```
+   python -c "import sys; sys.path.insert(0,'src'); from pathlib import Path; from zontar import render; d=Path(sys.argv[1]); render.contact_sheet(sorted(p for p in d.iterdir() if p.suffix.lower() in {'.jpg','.jpeg','.png','.webp'} and not p.name.startswith('_')), d/'_review_sheet.png')" <candidates>/<sku>
+   ```
+7. **汇报并更新 `docs/HANDOFF.md`**：每个 SKU 推荐最多 3 个候选（按 score），各自的授权结论与风险，未满足的请求。
+
+**禁止**：写入 `source/`；覆盖已有文件；把候选设为 `approved`（只能由人工设定）；抠图、改上架图或文案；上传、推送、同步远端。不虚构来源、授权或尺寸，未核验的字段留空并在 notes 说明。
 
 ## 在流水线中的位置
 

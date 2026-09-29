@@ -8,6 +8,9 @@
     sync push|pull [--prefix P]       mirror assets to/from the NAS or OSS remote
     url KEY                           public/signed URL of an asset on the remote
     pack SLUG | --all                 zip a vehicle package into outputs/vehicles/SLUG/dist/
+    run SLUG [--from NN] [--to NN]    run pipelines/SLUG/NN_* in order, then pack + manifest
+    status [--json]                   what is done / missing / next for every vehicle
+    styles [--json]                   list selectable vehicle-image themes
 """
 from __future__ import annotations
 
@@ -17,10 +20,10 @@ import os
 import sys
 from pathlib import Path
 
-from . import layout, manifest, pack, tables
+from . import layout, manifest, pack, tables, themes
 from .config import settings
 
-FONT_DIR = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+FONT_DIR = Path(os.environ.get("ZONTAR_FONT_DIR") or Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts")
 REQUIRED_FONTS = ["arial.ttf", "arialbd.ttf", "ariblk.ttf", "impact.ttf", "tahoma.ttf", "tahomabd.ttf"]
 
 
@@ -44,7 +47,7 @@ def _paths(args) -> int:
     if args.vehicle:
         v = layout.vehicle(args.vehicle)
         out["vehicle"] = {k: str(getattr(v, k)) for k in (
-            "source", "package", "main", "fitment", "selector", "info", "preview",
+            "source", "candidates", "package", "main", "fitment", "selector", "info", "preview",
             "gallery", "aplus_pc", "aplus_mobile", "dist", "zip_path", "data_dir")} | {
             "slug": v.slug, "package_name": v.package_name}
     if args.json:
@@ -134,6 +137,18 @@ def _pack(args) -> int:
     return 0
 
 
+def _styles(args) -> int:
+    items = [theme.to_dict() for theme in themes.list_styles()]
+    if args.json:
+        print(json.dumps(items, ensure_ascii=False, indent=2))
+        return 0
+    for theme in themes.list_styles():
+        print(f"{theme.id:18} {theme.name}")
+        print(f"{'':18} {theme.best_for}")
+        print(f"{'':18} reference: {theme.reference_preview}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -160,6 +175,15 @@ def main(argv: list[str] | None = None) -> int:
 
     sp = sub.add_parser("pack"); g = sp.add_mutually_exclusive_group(required=True)
     g.add_argument("slug", nargs="?"); g.add_argument("--all", action="store_true"); sp.set_defaults(fn=_pack)
+
+    sp = sub.add_parser("run"); sp.add_argument("slug")
+    sp.add_argument("--from", dest="start", type=int); sp.add_argument("--to", dest="stop", type=int)
+    sp.add_argument("--force", action="store_true", help="allow re-running a delivered vehicle in place")
+    sp.add_argument("--skip-pack", action="store_true")
+    sp.set_defaults(fn=lambda a: __import__("zontar.runner", fromlist=["run"]).run(a.slug, a.start, a.stop, a.force, a.skip_pack))
+    sp = sub.add_parser("status"); sp.add_argument("--json", action="store_true")
+    sp.set_defaults(fn=lambda a: __import__("zontar.runner", fromlist=["status"]).status(a.json))
+    sp = sub.add_parser("styles"); sp.add_argument("--json", action="store_true"); sp.set_defaults(fn=_styles)
 
     args = p.parse_args(argv)
     return args.fn(args)
