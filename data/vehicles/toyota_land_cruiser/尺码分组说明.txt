@@ -1,0 +1,6 @@
+Toyota Land Cruiser 按Ozon展示尺码分为4个SKU：
+S → 实际发货YM：71、70 Series短轴，1984–2026。
+M → 实际发货YL：60 Series、80 Series早期，1980–1994。
+L → 实际发货YXL：76、80改款、100/200/300、Cygnus、Arctic Trucks，1995–2026。
+XL → 实际发货YXL：78、70 Series长轴，1984–2026。
+越野车共用副图8张、PC端A+ 5张、移动端A+ 5张已放入06、07、08文件夹。

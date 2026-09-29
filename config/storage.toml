@@ -1,0 +1,29 @@
+# Asset storage configuration (committed defaults).
+# Machine-specific overrides go in config/storage.local.toml (gitignored),
+# or environment variables: ZONTAR_ASSET_ROOT, ZONTAR_REMOTE.
+#
+# Binary files (images, zips, original .xlsx) never go into git.
+# They live under `asset_root` and are addressed by a *key*: the POSIX path
+# relative to asset_root, e.g. "outputs/vehicles/toyota_rav4/package/01_主图/RAV4_M_主图_V6_1086x1448.png".
+# manifests/*.csv (in git) pins every key to a sha256, so any machine can
+# pull the exact bytes back from the remote.
+
+[local]
+# Working copy of the asset tree. Relative paths resolve against the repo root.
+# May point straight at a NAS mount, e.g. "Z:/zontar/assets" or "//nas/zontar/assets".
+asset_root = "assets"
+
+[remote]
+# Where the canonical copy of the assets lives: "none" | "nas" | "oss"
+backend = "none"
+
+[remote.nas]
+root = "//NAS/zontar/assets"
+
+[remote.oss]
+# Aliyun OSS. Credentials come from env OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET, never from this file.
+endpoint = "https://oss-cn-hangzhou.aliyuncs.com"
+bucket = "zontar-assets"
+prefix = "assets/"
+# Optional CDN / public domain used by `zontar url <key>` (e.g. image URLs for Ozon upload sheets).
+public_base_url = ""

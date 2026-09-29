@@ -1,0 +1,4 @@
+Renault Logan 两个Ozon SKU：
+3M：Sedan，包含Stepway，2004–2022；实际发货尺码L。
+2M：Wagon，包含MCV，2009–2018；实际发货尺码L。
+主图与车型图按SKU分别制作；SKU选择图、共用副图及A+可在同一卡片内共用。

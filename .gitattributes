@@ -1,0 +1,18 @@
+# Code: normalise to LF in the repo.
+*.py    text eol=lf
+*.mjs   text eol=lf
+*.ps1   text eol=crlf
+*.toml  text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+
+# CSV tables are stored byte-for-byte (UTF-8 BOM, CRLF rows, LF inside quoted cells).
+# Normalising line endings would corrupt multi-line cells, so no EOL conversion.
+*.csv   -text diff
+*.txt   -text diff
+
+# Safety net if a binary is ever force-added.
+*.png   binary
+*.jpg   binary
+*.zip   binary
+*.xlsx  binary

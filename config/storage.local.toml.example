@@ -1,0 +1,11 @@
+# Copy to config/storage.local.toml (gitignored) and adjust for this machine.
+
+[local]
+asset_root = "assets"          # or "Z:/zontar/assets" to work directly on the NAS
+
+[remote]
+backend = "oss"                # none | nas | oss
+
+[remote.oss]
+bucket = "zontar-assets"
+public_base_url = "https://img.example.com/assets/"

@@ -1,0 +1,35 @@
+# Binary asset store: local mirror of NAS / OSS. Pinned by manifests/*.csv instead.
+/assets/
+
+# Binaries must never sneak into git from anywhere else either.
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.psd
+*.zip
+*.xlsx
+*.xls
+*.xlsm
+*.inspect.ndjson
+*.part
+
+# Machine-specific storage settings and secrets
+config/storage.local.toml
+.env
+
+# Python / Node
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+node_modules/
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+# project agents are versioned; local Claude settings are not
+.claude/*
+!.claude/agents/
