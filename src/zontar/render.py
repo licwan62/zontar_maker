@@ -65,7 +65,9 @@ class Job:
     skus: list[Sku]
     style: str = "land_cruiser"
     layout_style: str | None = None  # deprecated compatibility alias; prefer `style`
+    main_title_lines: tuple[str, str] | None = None  # optional larger two-line main-image heading
     drafts: list[str] = field(default_factory=list)
+    layout_audits: dict[str, dict] = field(default_factory=dict)
 
 
 # --- inputs with fallbacks ---------------------------------------------------------
@@ -229,6 +231,41 @@ def _contain_rgba(image, size):
     return out
 
 
+def _layout_audit(items: list[dict]) -> dict:
+    """Measure ink area and contrast as a reproducible proxy for visual weight."""
+    total = sum(item["weight"] for item in items)
+    left = sum(item["weight"] * max(0, min(item["bbox"][2], W / 2) - item["bbox"][0]) /
+               max(1, item["bbox"][2] - item["bbox"][0]) for item in items)
+    right = total - left
+    center_x = sum(item["weight"] * (item["bbox"][0] + item["bbox"][2]) / 2 for item in items) / total
+    groups: dict[str, list[dict]] = {}
+    for item in items:
+        groups.setdefault(item["name"], []).append(item)
+    boxes = {name: (min(i["bbox"][0] for i in parts), min(i["bbox"][1] for i in parts),
+                    max(i["bbox"][2] for i in parts), max(i["bbox"][3] for i in parts))
+             for name, parts in groups.items()}
+    overlaps = []
+    for n, (name, a) in enumerate(boxes.items()):
+        for other, b in list(boxes.items())[n + 1:]:
+            if min(a[2], b[2]) > max(a[0], b[0]) and min(a[3], b[3]) > max(a[1], b[1]):
+                overlaps.append(f"{name}/{other}")
+    out_of_bounds = [name for name, box in boxes.items()
+                     if box[0] < 0 or box[1] < 0 or box[2] > W or box[3] > H]
+    ratio = left / right if right else float("inf")
+    return {
+        "method": "painted pixel area × luminance contrast; photo background excluded",
+        "elements": {name: {"bbox": list(boxes[name]),
+                            "weight_pct": round(100 * sum(i["weight"] for i in parts) / total, 1),
+                            "tier": parts[0]["tier"]} for name, parts in groups.items()},
+        "left_right_ratio": round(ratio, 3),
+        "center_x_fraction": round(center_x / W, 3),
+        "overlaps": overlaps,
+        "out_of_bounds": out_of_bounds,
+        "passed": 0.75 <= ratio <= 1.33 and 0.45 <= center_x / W <= 0.55
+                  and not overlaps and not out_of_bounds,
+    }
+
+
 # --- layouts -----------------------------------------------------------------------
 def main_image(job, v, logo, icons, sku: Sku) -> Image.Image:
     drafts_before = len(job.drafts)
@@ -236,45 +273,154 @@ def main_image(job, v, logo, icons, sku: Sku) -> Image.Image:
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     mask = Image.new("L", (W, H), 0)
     p = mask.load()
-    for y in range(465):
-        a = 247 if y <= 320 else round(247 * (1 - (y - 320) / 145) ** 1.35)
+    header_solid = 320
+    header_end = 465
+    for y in range(header_end):
+        a = 247 if y <= header_solid else round(247 * (1 - (y - header_solid) / (header_end - header_solid)) ** 1.35)
         for x in range(W):
             p[x, y] = max(0, a)
     layer.paste((248, 250, 252, 255), (0, 0, W, H))
     layer.putalpha(mask.filter(ImageFilter.GaussianBlur(7)))
     base.alpha_composite(layer)
     dr = ImageDraw.Draw(base)
-    add_logo(job, logo, base, 849, 28, 187)
-    dr.text((34, 40), job.title, font=fit(dr, job.title, 785, 76, 50), fill=NAVY)
-    dr.text((34, 140), sku.body, font=fit(dr, sku.body, 655, 54, 34), fill=ORANGE)
-    dr.rounded_rectangle((720, 136, 1051, 215), radius=14, fill=ORANGE)
-    yf = fit(dr, sku.years, 291, 49, 30)
-    bb = dr.textbbox((0, 0), sku.years, font=yf)
-    dr.text((720 + (331 - (bb[2] - bb[0])) // 2, 145), sku.years, font=yf, fill=WHITE)
+    audit_items: list[dict] = []
+
+    def luminance(color):
+        return (0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2]) / 255
+
+    def draw_text(name, xy, value, font, fill, tier, background=(248, 250, 252)):
+        dr.text(xy, value, font=font, fill=fill)
+        if job.main_title_lines:
+            ink = sum(font.getmask(value)) / 255
+            audit_items.append({"name": name, "bbox": dr.textbbox(xy, value, font=font),
+                                "weight": ink * abs(luminance(fill) - luminance(background)),
+                                "tier": tier, "font_px": font.size})
+
+    def draw_box(name, bbox, fill, tier):
+        dr.rounded_rectangle(bbox, radius=14, fill=fill)
+        if job.main_title_lines:
+            audit_items.append({"name": name, "bbox": bbox,
+                                "weight": (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) *
+                                          abs(luminance(fill) - luminance((248, 250, 252))),
+                                "tier": tier})
+
+    if job.main_title_lines:
+        add_logo(job, logo, base, 849, 28, 187)
+        if logo is not None:
+            logo_height = round(187 * logo.height / logo.width)
+            resized_alpha = logo.getchannel("A").resize((187, logo_height), Image.Resampling.LANCZOS)
+            audit_items.append({"name": "brand", "bbox": (849, 28, 1036, 28 + logo_height),
+                                "weight": sum(resized_alpha.getdata()) / 255 * 0.65, "tier": "image"})
+    else:
+        add_logo(job, logo, base, 849, 28, 187)
+    if job.main_title_lines:
+        draw_text("title", (34, 40), job.title, condensed(76), NAVY, "large")
+        body_y, years_y, size_y = 140, 136, 243
+    else:
+        dr.text((34, 40), job.title, font=fit(dr, job.title, 785, 76, 50), fill=NAVY)
+        body_y, years_y, size_y = 140, 136, 243
+    body_font = condensed(50) if job.main_title_lines else fit(dr, sku.body, 655, 54, 34)
+    draw_text("variant", (34, body_y), sku.body, body_font, ORANGE, "medium")
+    if job.main_title_lines:
+        year_left, year_width, year_height, year_font_size = 720, 331, 79, 50
+    else:
+        year_left, year_width, year_height, year_font_size = 720, 331, 79, 49
+    draw_box("years", (year_left, years_y, year_left + year_width, years_y + year_height), ORANGE, "medium")
+    yf = condensed(50) if job.main_title_lines else fit(dr, sku.years, year_width - 40, year_font_size, 30)
+    year_text_bb = dr.textbbox((0, 0), sku.years, font=yf)
+    draw_text("years", (year_left + (year_width - (year_text_bb[2] - year_text_bb[0])) // 2, years_y + 9),
+              sku.years, yf, WHITE, "medium", ORANGE)
     sw = 365
-    dr.rounded_rectangle((34, 243, 34 + sw, 333), radius=14, fill=NAVY)
-    dr.text((59, 252), f"SIZE: {sku.code}", font=fit(dr, f"SIZE: {sku.code}", sw - 50, 58, 43), fill=WHITE)
-    dx = 34 + sw + 27
-    dr.line((dx, 249, dx, 328), fill=NAVY, width=4)
-    for i, line in enumerate(job.subtitle):
-        dr.text((dx + 28, 247 + 40 * i), line, font=fit(dr, line, 610, 34, 27), fill=NAVY)
+    draw_box("size", (34, size_y, 34 + sw, size_y + 90), NAVY, "medium")
+    size_font = condensed(50) if job.main_title_lines else fit(dr, f"SIZE: {sku.code}", sw - 50, 58, 43)
+    size_bb = dr.textbbox((0, 0), f"SIZE: {sku.code}", font=size_font)
+    draw_text("size", (59, size_y + 9), f"SIZE: {sku.code}", size_font,
+              WHITE, "medium", NAVY)
+    if job.main_title_lines:
+        dx = 34 + sw + 27
+        dr.line((dx, size_y + 6, dx, size_y + 85), fill=NAVY, width=4)
+        for i, line in enumerate(job.subtitle):
+            draw_text("subtitle", (dx + 28, 247 + 40 * i), line, condensed(30), NAVY, "small")
+    else:
+        dx = 34 + sw + 27
+        dr.line((dx, size_y + 6, dx, size_y + 85), fill=NAVY, width=4)
+        for i, line in enumerate(job.subtitle):
+            dr.text((dx + 28, 247 + 40 * i), line, font=fit(dr, line, 610, 34, 27), fill=NAVY)
     dr.rectangle((0, 1220, W, H), fill=NAVY)
     labels = [("ЗАЩИТА", "ОТ ДОЖДЯ"), ("ЗАЩИТА", "ОТ СНЕГА"), ("ЗАЩИТА", "ОТ СОЛНЦА"), ("ВСЕСЕЗОННЫЙ", "ЧЕХОЛ")]
+    footer_items: list[dict] = []
     for i, (l1, l2) in enumerate(labels):
         x = i * 271
         ic = icons[i]
         s = min(58 / ic.width, 58 / ic.height)
         ic = ic.resize((round(ic.width * s), round(ic.height * s)), Image.Resampling.LANCZOS)
-        base.alpha_composite(ic, (x + 22, 1248 + (58 - ic.height) // 2))
-        dr.text((x + 91, 1242), l1, font=bold(18), fill=WHITE)
-        dr.text((x + 91, 1270), l2, font=bold(18), fill=WHITE)
+        icon_y = 1248 + (58 - ic.height) // 2
+        base.alpha_composite(ic, (x + 22, icon_y))
+        for value, text_y in ((l1, 1242), (l2, 1270)):
+            font = bold(18)
+            dr.text((x + 91, text_y), value, font=font, fill=WHITE)
+            if job.main_title_lines:
+                footer_items.append({"name": f"feature_{i + 1}",
+                                     "bbox": dr.textbbox((x + 91, text_y), value, font=font),
+                                     "weight": sum(font.getmask(value)) / 255 *
+                                               abs(luminance(WHITE) - luminance(NAVY)), "tier": "small"})
+        if job.main_title_lines:
+            footer_items.append({"name": f"feature_{i + 1}",
+                                 "bbox": (x + 22, icon_y, x + 22 + ic.width, icon_y + ic.height),
+                                 "weight": sum(ic.getchannel("A").getdata()) / 255 * 0.7,
+                                 "tier": "image"})
         if i < 3:
             dr.line((x + 270, 1238, x + 270, 1323), fill=(118, 151, 177), width=2)
-    for y, t, s in [(1350, f"Материалы принадлежат бренду {job.brand}.", 18),
-                    (1379, "За товары сторонних продавцов бренд ответственности не несёт.", 17)]:
+    if job.main_title_lines:
+        dr.line((70, 1336, 1016, 1336), fill=(118, 151, 177), width=2)
+        legal_lines = [(1352, f"Материалы принадлежат бренду {job.brand}.", 27),
+                       (1390, "За товары сторонних продавцов бренд ответственности не несёт.", 25)]
+    else:
+        legal_lines = [(1350, f"Материалы принадлежат бренду {job.brand}.", 18),
+                       (1379, "За товары сторонних продавцов бренд ответственности не несёт.", 17)]
+    for y, t, s in legal_lines:
         f = regular(s)
         bb = dr.textbbox((0, 0), t, font=f)
-        dr.text(((W - (bb[2] - bb[0])) // 2, y), t, font=f, fill=(220, 230, 238))
+        pos = ((W - (bb[2] - bb[0])) // 2, y)
+        dr.text(pos, t, font=f, fill=(220, 230, 238))
+        if job.main_title_lines:
+            footer_items.append({"name": f"legal_{1 if y == legal_lines[0][0] else 2}",
+                                 "bbox": dr.textbbox(pos, t, font=f),
+                                 "weight": sum(f.getmask(t)) / 255 *
+                                           abs(luminance((220, 230, 238)) - luminance(NAVY)), "tier": "small"})
+    if job.main_title_lines:
+        audit = _layout_audit(audit_items)
+        audit["reference"] = "toyota_land_cruiser/LandCruiser_L_主图_1086x1448.png"
+        audit["reference_balance_window"] = {
+            "left_right_ratio": [1.55, 2.05], "center_x_fraction": [0.38, 0.44]
+        }
+        audit["capsule_text_height_ratio"] = {
+            "years": round((year_text_bb[3] - year_text_bb[1]) / year_height, 3),
+            "size": round((size_bb[3] - size_bb[1]) / 90, 3),
+            "accepted": [0.44, 0.58],
+        }
+        audit["header_font_tiers_px"] = {"small": 30, "medium": 50, "large": 76}
+        actual_tiers = {tier: sorted({item["font_px"] for item in audit_items
+                                      if item["tier"] == tier and "font_px" in item})
+                        for tier in audit["header_font_tiers_px"]}
+        audit["actual_header_font_px"] = actual_tiers
+        audit["typography_passed"] = all(actual_tiers[tier] == [size]
+                                         for tier, size in audit["header_font_tiers_px"].items())
+        audit["reference_balance_passed"] = (
+            1.55 <= audit["left_right_ratio"] <= 2.05
+            and 0.38 <= audit["center_x_fraction"] <= 0.44
+            and not audit["overlaps"] and not audit["out_of_bounds"]
+        )
+        audit["capsule_proportion_passed"] = all(
+            0.44 <= audit["capsule_text_height_ratio"][name] <= 0.58
+            for name in ("years", "size")
+        )
+        audit["footer"] = _layout_audit(footer_items)
+        audit["passed"] = (audit["reference_balance_passed"] and audit["footer"]["passed"]
+                           and audit["typography_passed"] and audit["capsule_proportion_passed"])
+        job.layout_audits[sku.code] = audit
+        if not audit["passed"]:
+            raise ValueError(f"main layout audit failed for {sku.code}: {audit}")
     return watermark(base) if len(job.drafts) > drafts_before or _logo_missing(logo) else base
 
 
@@ -768,6 +914,8 @@ def render_vehicle(job: Job, v: layout.Vehicle) -> dict:
     contact_sheet(outputs, v.preview / f"{job.file_prefix}_{len(outputs)}图总览.png")
     report = {"style": style, "images": [layout.key_of(p) for p in outputs],
               "drafts": sorted(set(job.drafts))}
+    if job.layout_audits:
+        report["main_layout_audit"] = job.layout_audits
     # Read by `run.py status`; lives next to (not inside) the package so it never ships in the zip.
     (v.package.parent / "render_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return report

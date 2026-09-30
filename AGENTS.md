@@ -20,6 +20,7 @@
 ```
 python run.py status                         # 状态与下一步
 python run.py styles                         # 可选套图主题及参考图
+python run.py bg request --theme <主题>       # 按需为主题出背景生图请求；登记/审核见 docs/BACKGROUND_LIBRARY.md
 python run.py run <slug>                     # 依次跑 pipelines/<slug>/NN_*，再打包 + 刷新清单
 python run.py run <slug> --from 10           # 从某一步继续
 python run.py doctor                         # 检查输入、字体、远端配置

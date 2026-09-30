@@ -21,7 +21,7 @@ skus = [render.Sku(code=r["sku"], ship_size=r["ship_size"], body=r["body"], year
         for r in tables.read_csv(v.data_dir / "inputs" / "skus.csv")]
 job = render.Job(brand=reg["listing_brand"], title="VOLKSWAGEN TIGUAN", file_prefix="VW_Tiguan",
                  subtitle=("ВСЕСЕЗОННЫЙ ЧЕХОЛ", "ДЛЯ КРОССОВЕРА"), skus=skus,
-                 style="renault_logan")
+                 style="renault_logan", main_title_lines=("VOLKSWAGEN", "TIGUAN"))
 result = render.render_vehicle(job, v)
 
 for src, dst in [(layout.category_library(v.gallery_source), v.gallery),

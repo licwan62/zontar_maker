@@ -110,13 +110,17 @@ for i, r in enumerate(records):
     upload.append(vals)
 tables.write_csv(v.data_dir / "official_listing" / "模板.csv", [*header_rows, *upload])
 
-rules = ("3:4 竖图，至少 1086×1448，无任何文字、Logo、水印。灰色单层轻薄光滑 PEVA 车罩，哑光至柔和缎面光泽，自然余量与少量不规则褶皱；"
-         "无耳袋、无镜套、无反光条、无银色铝膜或金属高光。后视镜已折叠并被整片罩布连续覆盖。罩布前缘自然翻起露出车头以识别车型，"
-         "下摆连续离地、无轮拱剪口。秋冬户外停车场景（落叶、初霜或薄雪），明亮清晰，车辆完整、接地真实；画面上部约 30% 为干净浅色天空，留给标题排版。")
-prompts = [["sku", "file", "vehicle", "prompt"],
+rules = ("3:4 竖图，至少 1086×1448，无任何文字、额外 Logo、水印或标注。灰色单层轻薄光滑 PEVA 车罩，哑光至柔和缎面光泽，自然余量与少量不规则褶皱；"
+         "无耳袋、无镜套、无反光条、无银色铝膜或金属高光。后视镜已折叠并被整片罩布连续覆盖。使用 C01「左垂右提」掀罩状态："
+         "画面左侧车头处罩布下摆自然垂到保险杠和底盘之下、接近地面；罩布前缘从左向右连续升高，刚掀过中央大众车标，"
+         "露出靠镜头一侧的单个车灯，并在右侧升到近侧前轮轮毂上方，完整露出近侧前轮及少量前翼子板。另一侧车灯仍被罩住。"
+         "后轮露在罩布下摆之外。45–55 mm 全画幅标准焦距，自然前 3/4 视角，透视适中，车头与车尾大小差不过分；"
+         "主图默认完整展示车辆，从前保险杠到后保险杠及两个可见车轮都在画面内，左右留少量边距。"
+         "秋冬户外停车场景（落叶、初霜或薄雪），明亮清晰、接地真实；车身填满下方约 55–60%，上方约 35% 可叠加标题与大 Logo，避免过量天空和前景留白。")
+prompts = [["sku", "file", "vehicle", "cover_state_id", "prompt"],
            ["S", "base_S.png", "Volkswagen Tiguan II 标准轴距（5 座，车长约 4.5 m）",
-            "前 3/4 视角，一辆 Volkswagen Tiguan 第二代标准轴距 SUV 被灰色车罩完整罩住，前缘翻起露出大众标志性横向镀铬格栅与 LED 大灯。" + rules],
+            "C01", "Volkswagen Tiguan 第二代标准轴距 SUV，车头朝左，灰色车罩覆盖车身，使用指定的非对称掀罩状态。" + rules],
            ["M", "base_M.png", "Volkswagen Tiguan Allspace（7 座加长版，车长约 4.7 m）",
-            "侧前 3/4 视角，突出加长车身与更长的后悬和第三排侧窗轮廓，一辆 Volkswagen Tiguan Allspace 被灰色车罩完整罩住，前缘翻起露出大众格栅与大灯。" + rules]]
+            "C01", "Volkswagen Tiguan Allspace 加长版，车头朝左，灰色车罩覆盖车身，使用指定的非对称掀罩状态；通过车顶与车侧轮廓体现加长车身。" + rules]]
 tables.write_csv(v.data_dir / "inputs" / "source_prompts.csv", prompts)
 print("ok:", [str(v.data_dir / f"{prefix}_{BRAND}_上架内容.csv"), str(v.data_dir / "official_listing" / "模板.csv")])

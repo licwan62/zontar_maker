@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import layout, manifest, pack, tables
+from . import backgrounds, layout, manifest, pack, tables
 from .config import settings
 
 STEP_RE = re.compile(r"^(\d{2})_.+\.(py|mjs)$")
@@ -102,7 +102,7 @@ def vehicle_status(slug: str) -> dict:
         if missing:
             prompts = v.data_dir / "inputs" / "source_prompts.csv"
             st["todo"].append(f"generate source photos {missing} into {layout.key_of(v.source) if v.source.exists() else v.source} "
-                              + (f"(prompts: {prompts.relative_to(settings().repo_root).as_posix()})" if prompts.exists() else ""))
+                              + (f"(prompts: {backgrounds._rel(prompts)})" if prompts.exists() else ""))
     else:
         st["source_photos"] = f"{len(list(v.source.glob('*.png'))) if v.source.exists() else 0} files (legacy script)"
 
@@ -129,6 +129,13 @@ def vehicle_status(slug: str) -> dict:
         st["zip"] = "stale" if stale else "current"
         if stale:
             st["todo"].append(f"zip older than its contents: python run.py pack {slug}")
+
+    if backgrounds.vehicle_csv(v).exists():
+        bindings = tables.read_csv(backgrounds.vehicle_csv(v))
+        index = backgrounds.load_index()
+        ready = sum(backgrounds.is_ready(index.get(b.get("background_id", ""))) for b in bindings)
+        st["backgrounds"] = f"{ready}/{len(bindings)} ready"
+        st["todo"] += backgrounds.todo(slug)
 
     req = v.data_dir / "inputs" / "image_requests.csv"
     if req.exists():
@@ -176,7 +183,7 @@ def status(as_json: bool = False) -> int:
     print(f"manifest drift (files): {drift}" + ("  -> python run.py manifest" if any(drift.values()) else ""))
     for vs in report["vehicles"]:
         print(f"\n[{vs['status']:9}] {vs['slug']}")
-        for k in ("source_photos", "draft_images", "listing_csv", "package_files", "zip", "image_scout"):
+        for k in ("source_photos", "draft_images", "listing_csv", "package_files", "zip", "backgrounds", "image_scout"):
             if k in vs:
                 print(f"    {k:14} {vs[k]}")
         for t in vs["todo"]:

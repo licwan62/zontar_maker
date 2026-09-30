@@ -9,6 +9,7 @@ Asset tree (keys are POSIX paths relative to the asset root)::
 
     inputs/brand/                          logo + icon sprites
     inputs/category_library/<stage>/       generic per-body-type gallery & A+ images
+    inputs/background_library/<id>.png     generated environment backgrounds (data/backgrounds.csv)
     inputs/vehicles/<slug>/source/         generated base / cutout photos for one vehicle
     inputs/spreadsheets/                   original .xlsx inputs (template, tag bank, sales...)
     outputs/vehicles/<slug>/package/       deliverable images, laid out as the upload package
@@ -66,6 +67,11 @@ def brand_icons() -> Path:
 
 def category_library(stage: str) -> Path:
     return asset(f"inputs/category_library/{stage}")
+
+
+def background_library() -> Path:
+    """Environment backgrounds indexed by data/backgrounds.csv (see zontar.backgrounds)."""
+    return asset("inputs/background_library")
 
 
 def input_spreadsheet(name: str) -> Path:

@@ -18,6 +18,8 @@ class Theme:
     best_for: str
     composition: str
     vehicle_asset: str
+    # Default scene (data/backgrounds/scenes.csv) for on-demand generated backgrounds; "" = none.
+    background_scene: str = ""
 
     def to_dict(self) -> dict[str, str]:
         return asdict(self)
@@ -35,6 +37,7 @@ THEMES: dict[str, Theme] = {
         best_for="3–5 个以上 SKU，或每个 SKU 有较长兼容车型列表",
         composition="渐隐浅色页头；全幅车辆主图；适配卡片位于上部，车辆位于下部；紧凑多行选择表",
         vehicle_asset="base_<SKU>.png；适配图最好另有 vehicle_<SKU>.png",
+        background_scene="winter_lakeside",
     ),
     "renault_logan": Theme(
         id="renault_logan",
@@ -47,6 +50,7 @@ THEMES: dict[str, Theme] = {
         best_for="1–3 个 SKU，需要优先保证缩略图可读性和无元素压车",
         composition="主图为 Logan 标准页头；适配图上方信息、下方独立车辆区；选择图为浅底大卡片",
         vehicle_asset="base_<SKU>.png；透明 vehicle_<SKU>_cutout.png 可获得最佳效果",
+        background_scene="winter_lakeside",
     ),
     "toyota_rav4_v6": Theme(
         id="toyota_rav4_v6",

@@ -11,6 +11,12 @@
     run SLUG [--from NN] [--to NN]    run pipelines/SLUG/NN_* in order, then pack + manifest
     status [--json]                   what is done / missing / next for every vehicle
     styles [--json]                   list selectable vehicle-image themes
+    bg list|scenes                    background library index / available scenes
+    bg request --theme T|--scene S [--vehicle SLUG]   on-demand prompt for a theme background
+    bg prompt ID                      print the generation prompt of a background
+    bg register ID IMAGE              store a generated image (normalised to 1086x1448) + QA
+    bg approve|reject ID [--note N]   human review; only approved backgrounds are used
+    bg resolve SLUG --theme T         bind backgrounds for a vehicle (the NN_background step)
 """
 from __future__ import annotations
 
@@ -149,6 +155,35 @@ def _styles(args) -> int:
     return 0
 
 
+def _bg(args) -> int:
+    from . import backgrounds as bg
+    if args.action == "list":
+        for bid, r in bg.load_index().items():
+            print(f"{bid:28} {r['status']:9} {r['usage']:14} theme={r['theme'] or '-'} vehicle={r['vehicle'] or '-'} qa={r['qa'] or '-'}")
+    elif args.action == "scenes":
+        for sid, r in bg.scenes().items():
+            print(f"{sid:20} {r['name']}  ({r['notes']})")
+    elif args.action == "request":
+        if not (args.theme or args.scene):
+            raise SystemExit("bg request needs --theme or --scene")
+        r = bg.request(args.scene or "", args.theme or "", args.vehicle or "", note=args.note or "")
+        print(f"requested {r['background_id']}: prompt {bg.prompt_path(r['background_id'])}")
+    elif args.action == "prompt":
+        print(bg.prompt_path(args.id).read_text(encoding="utf-8"))
+    elif args.action == "register":
+        r = bg.register(args.id, Path(args.image), args.source or "", args.license or "", args.usage or "")
+        print(f"registered {args.id} -> {bg.image_path(args.id)}  qa: {r['qa']}")
+    elif args.action in ("approve", "reject"):
+        r = bg.set_status(args.id, args.action + "d" if args.action == "approve" else "rejected", args.note or "")
+        print(f"{args.id}: {r['status']}")
+    elif args.action == "resolve":
+        for b in bg.resolve_vehicle(args.slug, args.theme):
+            print(f"sku {b['sku']:4} {b['background_id']:28} {b['state']:10} ({b['action']})")
+        for t in bg.todo(args.slug):
+            print(f"TODO  {t}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -184,6 +219,19 @@ def main(argv: list[str] | None = None) -> int:
     sp = sub.add_parser("status"); sp.add_argument("--json", action="store_true")
     sp.set_defaults(fn=lambda a: __import__("zontar.runner", fromlist=["status"]).status(a.json))
     sp = sub.add_parser("styles"); sp.add_argument("--json", action="store_true"); sp.set_defaults(fn=_styles)
+
+    sp = sub.add_parser("bg"); bsub = sp.add_subparsers(dest="action", required=True)
+    bsub.add_parser("list"); bsub.add_parser("scenes")
+    c = bsub.add_parser("request"); c.add_argument("--theme"); c.add_argument("--scene")
+    c.add_argument("--vehicle"); c.add_argument("--note")
+    bsub.add_parser("prompt").add_argument("id")
+    c = bsub.add_parser("register"); c.add_argument("id"); c.add_argument("image")
+    c.add_argument("--source", help="default imagegen"); c.add_argument("--license", help="default ai_generated")
+    c.add_argument("--usage", choices=["direct", "reference_only"])
+    for name in ("approve", "reject"):
+        c = bsub.add_parser(name); c.add_argument("id"); c.add_argument("--note")
+    c = bsub.add_parser("resolve"); c.add_argument("slug"); c.add_argument("--theme", required=True)
+    sp.set_defaults(fn=_bg)
 
     args = p.parse_args(argv)
     return args.fn(args)
